@@ -14,8 +14,6 @@ Type this at the prompt of a Claude Code terminal session:
 
 Answer `y` to add the marketplace, then pick a scope (user scope loads it in every session).
 
-This repository is private: you need GitHub access to it, with `gh auth login` or a git credential that can read it.
-
 ## Develop
 
 ```
