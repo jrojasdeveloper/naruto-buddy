@@ -1,0 +1,7 @@
+{
+  "name": "naruto-buddy",
+  "version": "0.2.0",
+  "description": "Animated pixel-art Naruto that runs above the prompt while Claude is working",
+  "author": { "name": "jrojasdeveloper" },
+  "types": "./types/index.d.ts"
+}

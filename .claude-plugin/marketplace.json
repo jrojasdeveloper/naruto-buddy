@@ -1,0 +1,5 @@
+{
+  "name": "naruto-buddy",
+  "owner": { "name": "jrojasdeveloper" },
+  "plugins": [{ "name": "naruto-buddy", "source": "./" }]
+}
