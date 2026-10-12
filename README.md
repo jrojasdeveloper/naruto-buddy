@@ -4,6 +4,8 @@ A Claude Code mod: an animated pixel-art Naruto runs above the prompt while Clau
 
 He walks for a few seconds, then stops to perform that turn's jutsu (Rasengan, Kage Bunshin, Rasenshuriken, Sage Mode or Sexy no Jutsu) as a pixel animation before walking on.
 
+Type `/jutsu <name>` (for example `/jutsu rasengan`, `/jutsu kage`, `/jutsu sage-mode`) to choose the jutsu for the next turn; it applies once and later turns are random again. `/jutsu` alone lists the valid ids: `rasengan`, `kage-bunshin`, `rasenshuriken`, `sage-mode`, `sexy`.
+
 Sprites are pixel grids drawn with half-block characters (`▀ ▄ █`) in truecolor, with a smaller chibi sprite for short terminals.
 
 ## Install

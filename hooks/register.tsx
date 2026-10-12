@@ -3,10 +3,12 @@ import type { Register, Timer } from 'claude-code'
 
 import { FRAMES, SMALL_FRAMES, toRows } from './frames'
 import type { Pixels, Span } from './frames'
-import { JUTSUS, castFrames } from './jutsus'
+import { JUTSUS, castFrames, findJutsu } from './jutsus'
 import { clampOffset, pose } from './timeline'
 
 const frame = atom({ plugin: 'naruto-buddy', key: 'frame' } as const, 0)
+// The jutsu `/jutsu` chose for the next turn; kept in state so a hot reload keeps it.
+const chosen = atom({ plugin: 'naruto-buddy', key: 'next' } as const, null)
 
 const TICK_MS = 150
 
@@ -30,8 +32,31 @@ export const register: Register = on => {
   let tick: Timer | undefined
   let jutsu = JUTSUS[0]
 
+  on('session.start', async ($, e, next) => {
+    await $.command.register({
+      name: 'jutsu',
+      description: 'Choose the jutsu Naruto performs next turn',
+      argumentHint: `[${JUTSUS.map(j => j.id).join('|')}]`,
+    })
+
+    return next(e)
+  })
+
+  on('command.run', { command: 'jutsu' }, async ($, e) => {
+    const picked = findJutsu(e.args)
+    if (!picked) {
+      return { text: `Pick a jutsu: ${JUTSUS.map(j => j.id).join(', ')}` }
+    }
+    await update($, chosen, () => picked.id)
+
+    return { text: `Next jutsu: ${picked.name}` }
+  })
+
   on('turn.start', async ($, e, next) => {
-    jutsu = JUTSUS[Math.floor(Math.random() * JUTSUS.length)] ?? jutsu
+    const id = await read($, chosen)
+    const picked = JUTSUS.find(j => j.id === id)
+    if (picked) await update($, chosen, () => null)
+    jutsu = picked ?? JUTSUS[Math.floor(Math.random() * JUTSUS.length)] ?? jutsu
     await update($, frame, () => 0)
     tick?.cancel()
     tick = $.clock.every(TICK_MS, () => {

@@ -148,6 +148,48 @@ test('rasengan grows a blue sphere; rasenshuriken adds white blades', async () =
   expect(shu.some(f => countOf(f, 'W') > bodyWhite + 6)).toBe(true)
 })
 
+// The cast frames of one jutsu that show blades: more white than the body has.
+const charged = (id: string) => {
+  const white = countOf(FRAMES[0] ?? [], 'W')
+  return byId(id).full.filter(f => countOf(f, 'W') > white)
+}
+
+const whitePixels = (frame: readonly string[]) =>
+  frame.flatMap((row, y) => [...row].flatMap((k, x) => (k === 'W' && x >= FULL_WIDTH - 5 ? [`${x},${y}`] : [])))
+
+test('rasenshuriken: the sphere sits right on the raised hand, no gap', async () => {
+  const frames = byId('rasenshuriken').full
+  const frame = frames[frames.length - 1] ?? []
+  const beyond = frame.map(row => row.slice(FULL_WIDTH - 2))
+  const handTop = beyond.findIndex(row => row.includes('S'))
+  const sphere = beyond.flatMap((row, y) => (/[PAL]/.test(row) ? [y] : []))
+  expect(handTop).toBeGreaterThanOrEqual(18)
+  expect(Math.max(...sphere)).toBeGreaterThanOrEqual(handTop - 2)
+  expect(Math.max(...sphere)).toBeLessThanOrEqual(handTop)
+})
+
+test('rasenshuriken: blades touch the sphere in every charged frame and turn between frames', async () => {
+  const frames = charged('rasenshuriken')
+  expect(frames.length).toBeGreaterThanOrEqual(3)
+  for (const frame of frames) {
+    // A blade pixel (white) right next to the blue sphere.
+    const touching = frame.some((row, y) =>
+      [...row].some(
+        (k, x) =>
+          k === 'W' &&
+          x >= FULL_WIDTH - 5 &&
+          [frame[y - 1]?.[x], frame[y + 1]?.[x], row[x - 1], row[x + 1]].some(n => n !== undefined && /[PAL]/.test(n)),
+      ),
+    )
+    expect(touching).toBe(true)
+    // Blades are outlined in black so they read against a light background.
+    expect(countOf(frame, 'K')).toBeGreaterThan(countOf(FRAMES[0] ?? [], 'K'))
+  }
+  const shapes = frames.map(f => whitePixels(f).join(';'))
+  expect(new Set(shapes).size).toBeGreaterThanOrEqual(2)
+  for (let i = 1; i < shapes.length; i++) expect(shapes[i]).not.toBe(shapes[i - 1])
+})
+
 test('the raised arm is bent from the shoulder: the hand sits beside the chest with the sphere above it', async () => {
   for (const id of ['rasengan', 'rasenshuriken']) {
     const frame = byId(id).full[byId(id).full.length - 1] ?? []

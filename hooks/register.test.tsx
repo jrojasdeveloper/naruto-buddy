@@ -73,3 +73,92 @@ test('naruto runs above the prompt only while working', async ($, on) => {
     await narrow.unmount()
   }
 })
+
+// The jutsu the spinner names, read through a stand-in for the engine's own Spinner.
+const spinnerWord = async ($: any, on: any): Promise<() => Promise<string>> => {
+  let word = ''
+  on('session.start', ($$: any, e: any) => ({ cwd: e.cwd }))
+  on('turn.start', ($$: any, e: any) => ({ turnId: e.turnId }))
+  on('ui.render', { component: 'Spinner' }, ($$: any, e: any) => {
+    word = e.props.word
+    const { Box } = $$.ui.resolve(e)
+    return <Box key="engine" />
+  })
+
+  return async () => {
+    const mounted = await $.ui.mount({
+      plugin: 'naruto-buddy',
+      surface: 'terminal',
+      component: 'Spinner',
+      props: { word: 'Working', message: null, suffix: '…', mode: 'responding' },
+    })
+    await mounted.unmount()
+    return word
+  }
+}
+
+const runJutsu = async ($: any, args: string) =>
+  $.command.run({ command: 'jutsu', args, origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })
+
+const startTurn = async ($: any, n: number) => $.turn.start({ text: 'go', turnId: `turn-${n}` })
+
+test('/jutsu sets the next jutsu once: the next turn uses it, the one after is random again', async ($, on) => {
+  const read = await spinnerWord($, on)
+  await $.session.start({ cwd: '.', surface: 'terminal', isInteractive: true })
+
+  const reply = await runJutsu($, 'Rasengan')
+  expect(reply.text).toBe('Next jutsu: Rasengan')
+
+  await startTurn($, 1)
+  expect(await read()).toBe('Rasengan')
+
+  // Cleared: later turns are drawn at random, so across many turns more than one jutsu shows.
+  const seen = new Set<string>()
+  for (let n = 2; n < 40; n++) {
+    await startTurn($, n)
+    seen.add(await read())
+  }
+  expect(seen.size).toBeGreaterThan(1)
+})
+
+test('/jutsu accepts ids and loose names, any case', async ($, on) => {
+  const read = await spinnerWord($, on)
+  await $.session.start({ cwd: '.', surface: 'terminal', isInteractive: true })
+  const cases: [string, string][] = [
+    ['kage-bunshin', 'Kage Bunshin no Jutsu'],
+    ['KAGE', 'Kage Bunshin no Jutsu'],
+    ['rasenshuriken', 'Rasenshuriken'],
+    ['sage-mode', 'Sage Mode'],
+    ['sexy', 'Sexy no Jutsu'],
+    ['  Sexy no Jutsu ', 'Sexy no Jutsu'],
+  ]
+  let n = 100
+  for (const [arg, name] of cases) {
+    const reply = await runJutsu($, arg)
+    expect(reply.text).toBe(`Next jutsu: ${name}`)
+    await startTurn($, n)
+    expect(await read()).toBe(name)
+    n++
+  }
+})
+
+test('/jutsu with no or an unknown argument lists the ids and sets nothing', async ($, on) => {
+  const read = await spinnerWord($, on)
+  await $.session.start({ cwd: '.', surface: 'terminal', isInteractive: true })
+
+  for (const args of ['', 'chidori', 'rasen']) {
+    const reply = await runJutsu($, args)
+    for (const id of ['rasengan', 'kage-bunshin', 'rasenshuriken', 'sage-mode', 'sexy']) {
+      expect(reply.text).toContain(id)
+    }
+    expect(reply.text).not.toContain('Next jutsu')
+  }
+
+  // Nothing was forced: turns stay random.
+  const seen = new Set<string>()
+  for (let n = 200; n < 240; n++) {
+    await startTurn($, n)
+    seen.add(await read())
+  }
+  expect(seen.size).toBeGreaterThan(1)
+})

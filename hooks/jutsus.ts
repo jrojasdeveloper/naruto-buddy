@@ -213,55 +213,52 @@ const kageBunshin = (clones: number): CastSet => {
   return { full, small: tiny }
 }
 
-// ---- Rasenshuriken: a bigger sphere with white blades, above his raised hand.
+// ---- Rasenshuriken: a bigger sphere on the raised hand, with white blades
+// turning around it.
 
-// The blades sit above the raised hand, clear of his hair.
-const SHURIKEN_X = 20
-const SHURIKEN_TOP = 8
-const SHURIKEN_WIDTH = 32
+// The sphere rests on the raised hand like the Rasengan's, only bigger; the
+// blades sit behind him and his arm, so they never cut into his hair.
+const SPHERE_X = 23 // centre column, a little right of the hand
+const SPHERE_BOTTOM = 20 // the row below its last one: the hand's top outline
+const BLADES = 16
+const SHURIKEN_WIDTH = 31
 
-const PLUS_BLADES: Pixels = [
-  '.....WW.....',
-  '.....WW.....',
-  '............',
-  '............',
-  '............',
-  'WW........WW',
-  'WW........WW',
-  '............',
-  '............',
-  '............',
-  '.....WW.....',
-  '.....WW.....',
-]
+// White blades around the sphere, outlined in black. `plus` points up, down,
+// left and right; `cross` points along the four diagonals.
+const BLADE_PLUS: Pixels = glow(
+  compose(BLADES, BLADES, [
+    { x: 7, y: 1, art: ['WW', 'WW', 'WW'] },
+    { x: 7, y: 12, art: ['WW', 'WW', 'WW'] },
+    { x: 1, y: 7, art: ['WWW', 'WWW'] },
+    { x: 12, y: 7, art: ['WWW', 'WWW'] },
+  ]),
+  'K',
+)
 
-const X_BLADES: Pixels = [
-  'WW........WW',
-  'WW........WW',
-  '..W......W..',
-  '............',
-  '............',
-  '............',
-  '............',
-  '............',
-  '............',
-  '..W......W..',
-  'WW........WW',
-  'WW........WW',
-]
+const DIAGONAL: Pixels = ['WW...', 'WWW..', '.WWW.', '..WWW']
+const flip = (art: Pixels): Pixels => art.map(row => [...row].reverse().join(''))
 
-const STAR_BLADES: Pixels = compose(12, 12, [
-  { x: 0, y: 0, art: PLUS_BLADES },
-  { x: 0, y: 0, art: X_BLADES },
-])
+const BLADE_CROSS: Pixels = glow(
+  compose(BLADES, BLADES, [
+    { x: 1, y: 1, art: DIAGONAL },
+    { x: 10, y: 1, art: flip(DIAGONAL) },
+    { x: 1, y: 11, art: [...DIAGONAL].reverse() },
+    { x: 10, y: 11, art: flip([...DIAGONAL].reverse()) },
+  ]),
+  'K',
+)
 
 const shuriken = (core?: Pixels, blades?: Pixels): Pixels => {
-  const offset = core ? (12 - core.length) / 2 : 0
+  const sphere = core
+    ? [{ x: SPHERE_X - core.length / 2, y: SPHERE_BOTTOM - core.length, art: core }]
+    : []
   return compose(SHURIKEN_WIDTH, ROWS, [
+    ...(blades
+      ? [{ x: SPHERE_X - BLADES / 2, y: SPHERE_BOTTOM - 8 / 2 - BLADES / 2, art: blades }]
+      : []),
     { x: 0, y: 0, art: ONE_ARM },
     RAISED_ARM,
-    ...(blades ? [{ x: SHURIKEN_X, y: SHURIKEN_TOP, art: blades }] : []),
-    ...(core ? [{ x: SHURIKEN_X + offset, y: SHURIKEN_TOP + offset, art: core }] : []),
+    ...sphere,
   ])
 }
 
@@ -269,11 +266,11 @@ const SHURIKEN_FULL: readonly Pixels[] = [
   shuriken(),
   shuriken(BALL_4),
   shuriken(spin(BALL_6, 1)),
-  shuriken(spin(BALL_8, 0), PLUS_BLADES),
-  shuriken(spin(BALL_8, 1), STAR_BLADES),
-  shuriken(spin(BALL_8, 2), X_BLADES),
-  shuriken(spin(BALL_8, 3), STAR_BLADES),
-  shuriken(spin(BALL_8, 0), PLUS_BLADES),
+  shuriken(BALL_8, BLADE_PLUS),
+  shuriken(spin(BALL_8, 1), BLADE_CROSS),
+  shuriken(spin(BALL_8, 2), BLADE_PLUS),
+  shuriken(spin(BALL_8, 3), BLADE_CROSS),
+  shuriken(BALL_8, BLADE_PLUS),
 ]
 
 const shurikenSmall = (ball?: Pixels): Pixels =>
@@ -388,6 +385,18 @@ export const JUTSUS: readonly [Jutsu, ...Jutsu[]] = [
   { id: 'sage-mode', name: 'Sage Mode', full: SAGE_FULL, small: SAGE_SMALL },
   { id: 'sexy', name: 'Sexy no Jutsu', full: SEXY_FULL, small: SEXY_SMALL },
 ]
+
+// Finds a jutsu by id or by name: exact first (ignoring case and punctuation),
+// then a unique partial match, so `kage` or `shuriken` work but `rasen` does not.
+export const findJutsu = (query: string): Jutsu | undefined => {
+  const norm = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const wanted = norm(query)
+  if (wanted === '') return undefined
+  const exact = JUTSUS.find(j => norm(j.id) === wanted || norm(j.name) === wanted)
+  if (exact) return exact
+  const partial = JUTSUS.filter(j => norm(j.id).includes(wanted) || norm(j.name).includes(wanted))
+  return partial.length === 1 ? partial[0] : undefined
+}
 
 const widthOf = (frames: readonly Pixels[]): number =>
   Math.max(...frames.map(frame => frame[0]?.length ?? 0))
