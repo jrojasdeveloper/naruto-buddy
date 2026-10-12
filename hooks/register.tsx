@@ -23,6 +23,7 @@ const rowsOf = (pixels: Pixels): Span[][] => {
 const widthOf = (frames: readonly Pixels[]): number =>
   Math.max(...frames.map(f => f[0]?.length ?? 0))
 
+// The full sprite needs 17 terminal rows (34 pixel rows); shorter bands get the small one.
 const FULL_ROWS = FRAMES[0] ? toRows(FRAMES[0]).length : Infinity
 
 export const register: Register = on => {
