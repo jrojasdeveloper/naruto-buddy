@@ -2,10 +2,17 @@ import { expect, test } from 'claude-code/testing'
 
 import { FRAMES, SMALL_FRAMES, toRows } from './frames'
 
-const band = (isWorking: boolean, maxRows = 20) =>
+const band = (isWorking: boolean, maxRows = 20, bodyColumns = 80) =>
   ({
     component: 'AbovePrompt',
-    props: { hasSurvey: false, isWorking, maxRows },
+    props: {
+      hasSurvey: false,
+      isWorking,
+      maxRows,
+      bodyColumns,
+      scroll: { offset: 0, bodyRows: maxRows },
+      view: {},
+    },
   }) as const
 
 test('every sprite is a rectangle of known palette keys with an even height', async () => {
@@ -17,7 +24,7 @@ test('every sprite is a rectangle of known palette keys with an even height', as
 })
 
 test('two pixel rows fold into one half-block row', async () => {
-  const [row] = toRows(['Y.', 'YB'])
+  const row = toRows(['Y.', 'YB'])[0] ?? []
   expect(row.map(span => span.text).join('')).toBe('█▄')
 })
 
@@ -41,5 +48,10 @@ test('naruto runs above the prompt only while working', async ($, on) => {
     expect(await idle.find({ key: 'naruto' })).toBeUndefined()
     expect(await idle.find({ key: 'naruto-small' })).toBeUndefined()
     await idle.unmount()
+
+    // Narrower than any cast frame: still drawn, never past the body.
+    const narrow = await $.ui.mount({ plugin: 'naruto-buddy', surface, ...band(true, 20, 12) })
+    expect(await narrow.find({ key: 'naruto' })).toBeDefined()
+    await narrow.unmount()
   }
 })

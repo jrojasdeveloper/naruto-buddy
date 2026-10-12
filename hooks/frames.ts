@@ -15,7 +15,15 @@ export const PALETTE: Readonly<Record<string, string>> = {
   E: '#1e90ff', // eyes
   O: '#ff7a00', // jacket and pants
   D: '#1f2a44', // shoulders and sandals
-  W: '#f2f2f2', // zipper
+  W: '#f2f2f2', // zipper, jutsu blades and smoke highlights
+  L: '#bdf0ff', // light blue sphere core
+  A: '#3aa8ff', // sky blue sphere body
+  P: '#1c4fd1', // deep blue sphere edge
+  G: '#d9dce1', // smoke
+  g: '#8f96a3', // smoke shade
+  R: '#ff5a1f', // sage mode eye markings
+  V: '#ffe600', // sage mode eyes
+  Q: '#fff3a0', // sage glow outline
 }
 
 const HEAD_TOP: Pixels = [
@@ -29,8 +37,8 @@ const HEAD_TOP: Pixels = [
   '..SSSSSSSSSSS...',
 ]
 
-const EYES_OPEN = '..SESSSSSSESS...'
-const EYES_SHUT = '..SKSSSSSSKSS...'
+export const EYES_OPEN = '..SESSSSSSESS...'
+export const EYES_SHUT = '..SKSSSSSSKSS...'
 
 const HEAD_BOTTOM: Pixels = [
   '..SSSSSSSSSSS...',
@@ -44,28 +52,28 @@ const HEAD_BOTTOM: Pixels = [
   '..OOOOOWOOOOO...',
 ]
 
-const STRIDE_LEFT: Pixels = [
+export const STRIDE_LEFT: Pixels = [
   '...OOO..OOO.....',
   '..OOO....OOO....',
   '..OO......OO....',
   '.DDD......DDD...',
 ]
 
-const PASSING: Pixels = [
+export const PASSING: Pixels = [
   '....OOO.OOO.....',
   '....OOO.OOO.....',
   '....OO...OO.....',
   '....DD...DD.....',
 ]
 
-const STRIDE_RIGHT: Pixels = [
+export const STRIDE_RIGHT: Pixels = [
   '....OOO..OOO....',
   '...OOO....OOO...',
   '...OO......OO...',
   '...DDD......DDD.',
 ]
 
-const body = (eyes: string, legs: Pixels): Pixels => [
+export const body = (eyes: string, legs: Pixels): Pixels => [
   ...HEAD_TOP,
   eyes,
   ...HEAD_BOTTOM,
@@ -80,7 +88,7 @@ export const FRAMES: readonly Pixels[] = [
 ]
 
 // Fallback for short terminals where the band cannot fit the full sprite.
-const small = (eyes: string, feet: string): Pixels => [
+export const small = (eyes: string, feet: string): Pixels => [
   '.Y.YY.Y.',
   'YYYYYYYY',
   'BBMMMMBB',
@@ -98,16 +106,28 @@ export const SMALL_FRAMES: readonly Pixels[] = [
   small('.SESSES.', '..D..D..'),
 ]
 
-export const JUTSUS: readonly string[] = [
-  'Rasengan',
-  'Kage Bunshin no Jutsu',
-  'Sexy no Jutsu',
-  'Rasenshuriken',
-  'Sage Mode',
-  'Believe it',
-]
+export const SMALL_STAND: Pixels = small('.SESSES.', '..D..D..')
 
 export const TRACK_WIDTH = 24
+
+export type Part = { x: number; y: number; art: Pixels }
+
+// Stamps parts onto a transparent canvas, later parts on top. '.' leaves what
+// is below, ' ' erases it, and anything outside the canvas is clipped.
+export const compose = (width: number, height: number, parts: readonly Part[]): Pixels => {
+  const grid = Array.from({ length: height }, () => Array<string>(width).fill('.'))
+  for (const { x, y, art } of parts) {
+    art.forEach((row, dy) => {
+      const line = grid[y + dy]
+      if (!line) return
+      ;[...row].forEach((key, dx) => {
+        if (x + dx < 0 || x + dx >= width || key === '.') return
+        line[x + dx] = key === ' ' ? '.' : key
+      })
+    })
+  }
+  return grid.map(line => line.join(''))
+}
 
 export type Cell = { char: string; color?: string; backgroundColor?: string }
 
@@ -142,7 +162,7 @@ export const toSpans = (cells: Cell[]): Span[] =>
 export const toRows = (pixels: Pixels): Span[][] => {
   const rows: Span[][] = []
   for (let y = 0; y < pixels.length; y += 2) {
-    rows.push(toSpans(toCells(pixels[y], pixels[y + 1] ?? '')))
+    rows.push(toSpans(toCells(pixels[y] ?? '', pixels[y + 1] ?? '')))
   }
   return rows
 }
